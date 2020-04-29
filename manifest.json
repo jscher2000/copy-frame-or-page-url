@@ -1,0 +1,33 @@
+{
+	"manifest_version": 2,
+	"name": "Copy Frame URL",
+	"description": "Right-click a framed page and pop its URL on the clipboard. Works on regular pages, too, unless you turn that off in Options.",
+	"version": "0.1",
+	"applications":{
+		"gecko": {
+			"id": "copy-frame-url@jeffersonscher.com",
+			"strict_min_version": "60.0"
+		}
+	},
+	"developer": {
+		"name": "Jefferson \"jscher2000\" Scher",
+		"url": "https://github.com/jscher2000/"
+	},
+	"background": {
+		"scripts": [
+			"background.js"
+		]
+	},
+	"permissions": [
+		"menus",
+		"clipboardWrite",
+		"storage"
+	],
+	"icons": {
+		"64": "icons/copy-frame-url-64.png"
+	},
+	"options_ui": {
+		"page": "options.html",
+		"browser_style": true
+	}
+}
