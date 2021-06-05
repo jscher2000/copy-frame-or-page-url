@@ -1,6 +1,8 @@
 /* 
-  Copyright 2020. Jefferson "jscher2000" Scher. License: MPL-2.0.
+  Copyright 2021. Jefferson "jscher2000" Scher. License: MPL-2.0.
   version 0.1 - initial concept
+  version 1.0 - added toolbar button and keyboard shortcut option
+  version 1.1 - added option to choose between toolbar button and address bar button
 */
 
 /**** Create and populate data structure ****/
@@ -8,7 +10,10 @@
 // Default starting values
 var oPrefs = {
 	allpages: true, 		// Copy the URL of the page even if it's in the top frame
-	allpagesmenu: false		// Current menu status
+	allpagesmenu: false,	// Current menu status
+	clickplain: 'url',		// Plain click on browser action copies URL only
+	clickshift: 'markdown',	// Shift+click on browser action copies markdown
+	pageaction: false		// Button in the address bar
 }
 let pagemenu;
 
@@ -34,7 +39,11 @@ let getPrefs = browser.storage.local.get("prefs").then((results) => {
 		}, function(){ // Optimistic!
 			oPrefs.allpagesmenu = true;
 		});
-	} 
+	}
+	if (oPrefs.pageaction){
+		browser.tabs.onUpdated.addListener(showPageAction);
+	}
+	updateButtonTooltips();
 }).catch((err) => {console.log('Error retrieving "prefs" from storage: '+err.message);});
 
 /**** Context menu item ****/
@@ -52,20 +61,117 @@ browser.menus.onClicked.addListener((menuInfo, currTab) => {
 	switch (menuInfo.menuItemId) {
 		case 'copy-frame-url':
 			// Copy to clipboard
-			navigator.clipboard.writeText(menuInfo.frameUrl).catch((err) => {
-				window.alert('Apologies, but there was an error writing to the clipboard: ' + err);
-			});
+			updateClipboard(menuInfo.frameUrl);
 			break;
 		case 'copy-page-url':
-			// Copy to clipboard
-			navigator.clipboard.writeText(menuInfo.pageUrl).catch((err) => {
-				window.alert('Apologies, but there was an error writing to the clipboard: ' + err);
-			});
+			// Check for Shift as modifier
+			var style = oPrefs.clickplain;
+			if (menuInfo.modifiers && menuInfo.modifiers.includes('Shift')){
+				style = oPrefs.clickshift;
+			}
+			// Set up text for copying
+			if (style == 'markdown'){
+				var txt = '[' + currTab.title + '](' + currTab.url + ')';
+			} else {
+				txt = menuInfo.pageUrl;
+			}
+			updateClipboard(txt);
 			break;
 		default:
 			// WTF?
 	}
 });
+
+function updateClipboard(txt){
+	// Copy to clipboard
+	navigator.clipboard.writeText(txt).catch((err) => {
+		window.alert('Apologies, but there was an error writing to the clipboard: ' + err);
+	});
+}
+
+/**** Toolbar button and keyboard shortcut ****/
+
+browser.browserAction.onClicked.addListener((tab, clickData) => {
+	// Check for Shift as modifier
+	var style = oPrefs.clickplain;
+	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')){
+		style = oPrefs.clickshift;
+	}
+	// Set up text for copying
+	if (style == 'markdown'){
+		var txt = '[' + tab.title + '](' + tab.url + ')';
+	} else {
+		txt = tab.url;
+	}
+	updateClipboard(txt);
+});
+
+browser.commands.onCommand.addListener((strName) => {
+	if (strName === 'copy-page-url'){
+		browser.tabs.query({
+			active: true,
+			currentWindow: true
+		}).then((currTab) => {
+			updateClipboard(currTab[0].url);
+		}).catch((err) => {
+			console.log(err);
+		});
+	} else if (strName === 'copy-page-url-as-markdown'){
+		browser.tabs.query({
+			active: true,
+			currentWindow: true
+		}).then((currTab) => {
+			updateClipboard('[' + currTab[0].title + '](' + currTab[0].url + ')');
+		}).catch((err) => {
+			console.log(err);
+		});
+	}
+});
+
+function showPageAction(tabId){
+	browser.pageAction.show(tabId);
+	browser.pageAction.setTitle({
+		tabId: tabId,
+		title: buttonTitle
+	});
+}
+
+browser.pageAction.onClicked.addListener((tab, clickData) => {
+	// Check for Shift as modifier
+	var style = oPrefs.clickplain;
+	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')){
+		style = oPrefs.clickshift;
+	}
+	// Set up text for copying
+	if (style == 'markdown'){
+		var txt = '[' + tab.title + '](' + tab.url + ')';
+	} else {
+		txt = tab.url;
+	}
+	updateClipboard(txt);
+});
+
+var buttonTitle = '';
+function updateButtonTooltips(){
+	if (oPrefs.clickplain == 'url'){
+		if (oPrefs.clickshift == 'markdown'){
+			buttonTitle = 'Copy Current Page URL (Shift+click for Markdown)';
+		} else {
+			buttonTitle = 'Copy Current Page URL';
+		}
+	} else if (oPrefs.clickplain == 'markdown'){
+		if (oPrefs.clickshift == 'markdown'){
+			buttonTitle = 'Copy Title+URL as Markdown';
+		} else {
+			buttonTitle = 'Copy Title+URL as Markdown (Shift+click for Plain URL)';
+		}
+	}
+	if (buttonTitle.length > 0){
+		browser.browserAction.setTitle({
+			title: buttonTitle
+		});
+	}
+}
 
 /**** Handle Requests from Options ****/
 
@@ -79,6 +185,15 @@ function handleMessage(request, sender, sendResponse){
 		// Receive pref updates from Options page, store to oPrefs, and commit to storage
 		var oSettings = request["update"];
 		oPrefs.allpages = oSettings.allpages;
+		oPrefs.clickplain = oSettings.clickplain;
+		oPrefs.clickshift = oSettings.clickshift;
+		// Check for Page Action changes
+		if (oSettings.pageaction == true && oPrefs.pageaction == false){
+			browser.tabs.onUpdated.addListener(showPageAction);
+		} else if (oSettings.pageaction == false && oPrefs.pageaction == true){
+			browser.tabs.onUpdated.removeListener(showPageAction);
+		}
+		oPrefs.pageaction = oSettings.pageaction;
 		browser.storage.local.set({prefs: oPrefs})
 			.catch((err) => {console.log('Error on browser.storage.local.set(): '+err.message);});
 		// Add or remove menu
@@ -88,10 +203,10 @@ function handleMessage(request, sender, sendResponse){
 				title: "Copy Page URL",
 				contexts: ["page", "selection"],
 				icons: {
-				"64": "icons/copy-frame-url-64.png"
+					"64": "icons/copy-frame-url-64.png"
 				}
 			}, function(){ // Optimistic!
-			oPrefs.allpagesmenu = true;
+				oPrefs.allpagesmenu = true;
 			});
 		} else if (oPrefs.allpages == false && oPrefs.allpagesmenu == true) {
 			pagemenu = browser.menus.remove("copy-page-url");
@@ -99,6 +214,8 @@ function handleMessage(request, sender, sendResponse){
 				oPrefs.allpagesmenu = false;
 			});
 		}
+		// Fix button tooltips
+		updateButtonTooltips();
 	}
 }
 browser.runtime.onMessage.addListener(handleMessage);

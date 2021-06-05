@@ -2,11 +2,11 @@
 	"manifest_version": 2,
 	"name": "Copy Frame URL",
 	"description": "Right-click a framed page and pop its URL on the clipboard. Works on regular pages, too, unless you turn that off in Options.",
-	"version": "0.1",
+	"version": "1.1",
 	"applications":{
 		"gecko": {
 			"id": "copy-frame-url@jeffersonscher.com",
-			"strict_min_version": "60.0"
+			"strict_min_version": "72.0"
 		}
 	},
 	"developer": {
@@ -21,7 +21,8 @@
 	"permissions": [
 		"menus",
 		"clipboardWrite",
-		"storage"
+		"storage",
+		"activeTab"
 	],
 	"icons": {
 		"64": "icons/copy-frame-url-64.png"
@@ -29,5 +30,27 @@
 	"options_ui": {
 		"page": "options.html",
 		"browser_style": true
+	},
+	"browser_action": {
+		"browser_style": true,
+		"default_icon": {
+			"64": "icons/copy-frame-url-64.png"
+		},
+		"default_title": "Copy Current Page URL (Shift+click for Markdown)"
+	},
+	"page_action": {
+		"browser_style": true,
+		"default_icon": {
+			"64": "icons/copy-frame-url-64.png"
+		},
+		"default_title": "Copy Current Page URL (Shift+click for Markdown)"
+	},
+	"commands": {
+		"copy-page-url": {
+			"description": "Copy Current Page URL"
+		},
+		"copy-page-url-as-markdown": {
+			"description": "Copy Markdown of Current Page [Title](URL)"
+		}
 	}
 }
