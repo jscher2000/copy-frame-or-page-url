@@ -3,6 +3,7 @@
   version 0.1 - initial concept
   version 1.0 - added toolbar button and keyboard shortcut option
   version 1.1 - added option to choose between toolbar button and address bar button
+  version 1.2 - dark mode icon
 */
 
 /**** Create and populate data structure ****/
@@ -13,7 +14,8 @@ var oPrefs = {
 	allpagesmenu: false,	// Current menu status
 	clickplain: 'url',		// Plain click on browser action copies URL only
 	clickshift: 'markdown',	// Shift+click on browser action copies markdown
-	pageaction: false		// Button in the address bar
+	pageaction: false,		// Button in the address bar
+	darkmode: false			// Option to use dark icon for Page Action
 }
 let pagemenu;
 
@@ -130,6 +132,21 @@ browser.commands.onCommand.addListener((strName) => {
 
 function showPageAction(tabId){
 	browser.pageAction.show(tabId);
+	if (oPrefs.darkmode == true){
+		browser.pageAction.setIcon({
+			tabId: tabId,
+			path: {
+				64: "icons/copy-frame-url-64-dark.png"
+			}
+		});
+	} else{
+		browser.pageAction.setIcon({
+			tabId: tabId,
+			path: {
+				64: "icons/copy-frame-url-64.png"
+			}
+		});
+	}
 	browser.pageAction.setTitle({
 		tabId: tabId,
 		title: buttonTitle
@@ -188,6 +205,7 @@ function handleMessage(request, sender, sendResponse){
 		oPrefs.clickplain = oSettings.clickplain;
 		oPrefs.clickshift = oSettings.clickshift;
 		// Check for Page Action changes
+		oPrefs.darkmode = oSettings.darkmode;		
 		if (oSettings.pageaction == true && oPrefs.pageaction == false){
 			browser.tabs.onUpdated.addListener(showPageAction);
 		} else if (oSettings.pageaction == false && oPrefs.pageaction == true){
