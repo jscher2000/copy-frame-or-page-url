@@ -4,6 +4,7 @@
   version 1.0 - added toolbar button and keyboard shortcut option
   version 1.1 - added option to choose between toolbar button and address bar button
   version 1.2 - dark mode icon
+  version 1.3 - option to decode unicode characters
 */
 
 /**** Create and populate data structure ****/
@@ -15,7 +16,8 @@ var oPrefs = {
 	clickplain: 'url',		// Plain click on browser action copies URL only
 	clickshift: 'markdown',	// Shift+click on browser action copies markdown
 	pageaction: false,		// Button in the address bar
-	darkmode: false			// Option to use dark icon for Page Action
+	darkmode: false,		// Option to use dark icon for Page Action
+	decode: true			// Option to decode Unicode URLs
 }
 let pagemenu;
 
@@ -63,7 +65,7 @@ browser.menus.onClicked.addListener((menuInfo, currTab) => {
 	switch (menuInfo.menuItemId) {
 		case 'copy-frame-url':
 			// Copy to clipboard
-			updateClipboard(menuInfo.frameUrl);
+			updateClipboard(deco(menuInfo.frameUrl));
 			break;
 		case 'copy-page-url':
 			// Check for Shift as modifier
@@ -73,9 +75,9 @@ browser.menus.onClicked.addListener((menuInfo, currTab) => {
 			}
 			// Set up text for copying
 			if (style == 'markdown'){
-				var txt = '[' + currTab.title + '](' + currTab.url + ')';
+				var txt = '[' + currTab.title + '](' + deco(currTab.url) + ')';
 			} else {
-				txt = menuInfo.pageUrl;
+				txt = deco(menuInfo.pageUrl);
 			}
 			updateClipboard(txt);
 			break;
@@ -91,6 +93,19 @@ function updateClipboard(txt){
 	});
 }
 
+function deco(urltxt){ // version 1.3
+	if (oPrefs.decode == true){
+		try {
+			return decodeURI(urltxt);
+		} catch(err) {
+			console.log(err, urltxt);
+			return urltxt;
+		}
+	} else {
+		return urltxt;
+	}
+}
+
 /**** Toolbar button and keyboard shortcut ****/
 
 browser.browserAction.onClicked.addListener((tab, clickData) => {
@@ -101,9 +116,9 @@ browser.browserAction.onClicked.addListener((tab, clickData) => {
 	}
 	// Set up text for copying
 	if (style == 'markdown'){
-		var txt = '[' + tab.title + '](' + tab.url + ')';
+		var txt = '[' + tab.title + '](' + deco(tab.url) + ')';
 	} else {
-		txt = tab.url;
+		txt = deco(tab.url);
 	}
 	updateClipboard(txt);
 });
@@ -114,7 +129,7 @@ browser.commands.onCommand.addListener((strName) => {
 			active: true,
 			currentWindow: true
 		}).then((currTab) => {
-			updateClipboard(currTab[0].url);
+			updateClipboard(deco(currTab[0].url));
 		}).catch((err) => {
 			console.log(err);
 		});
@@ -123,7 +138,7 @@ browser.commands.onCommand.addListener((strName) => {
 			active: true,
 			currentWindow: true
 		}).then((currTab) => {
-			updateClipboard('[' + currTab[0].title + '](' + currTab[0].url + ')');
+			updateClipboard('[' + currTab[0].title + '](' + deco(currTab[0].url) + ')');
 		}).catch((err) => {
 			console.log(err);
 		});
@@ -161,9 +176,9 @@ browser.pageAction.onClicked.addListener((tab, clickData) => {
 	}
 	// Set up text for copying
 	if (style == 'markdown'){
-		var txt = '[' + tab.title + '](' + tab.url + ')';
+		var txt = '[' + tab.title + '](' + deco(tab.url) + ')';
 	} else {
-		txt = tab.url;
+		txt = deco(tab.url);
 	}
 	updateClipboard(txt);
 });
@@ -204,6 +219,7 @@ function handleMessage(request, sender, sendResponse){
 		oPrefs.allpages = oSettings.allpages;
 		oPrefs.clickplain = oSettings.clickplain;
 		oPrefs.clickshift = oSettings.clickshift;
+		oPrefs.decode = oSettings.decode;
 		// Check for Page Action changes
 		oPrefs.darkmode = oSettings.darkmode;		
 		if (oSettings.pageaction == true && oPrefs.pageaction == false){
