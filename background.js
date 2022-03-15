@@ -74,8 +74,11 @@ browser.menus.onClicked.addListener((menuInfo, currTab) => {
 				style = oPrefs.clickshift;
 			}
 			// Set up text for copying
+			let txt;
 			if (style == 'markdown') {
-				var txt = '[' + currTab.title + '](' + deco(currTab.url) + ')';
+				txt = '[' + currTab.title + '](' + deco(currTab.url) + ')';
+			} else if (style == 'titleUrl') {
+				txt = currTab.title + `\n` + deco(currTab.url);
 			} else {
 				txt = deco(menuInfo.pageUrl);
 			}
@@ -118,6 +121,8 @@ browser.browserAction.onClicked.addListener((tab, clickData) => {
 	let txt;
 	if (style == 'markdown') {
 		txt = '[' + tab.title + '](' + deco(tab.url) + ')';
+	} else if (style == 'titleUrl') {
+		txt = tab.title + `\n` + deco(tab.url);
 	} else {
 		txt = deco(tab.url);
 	}
@@ -140,6 +145,15 @@ browser.commands.onCommand.addListener((strName) => {
 			currentWindow: true
 		}).then((currTab) => {
 			updateClipboard('[' + currTab[0].title + '](' + deco(currTab[0].url) + ')');
+		}).catch((err) => {
+			console.log(err);
+		});
+	} else if (strName === 'copy-page-url-as-title-url') {
+		browser.tabs.query({
+			active: true,
+			currentWindow: true
+		}).then((currTab) => {
+			updateClipboard(currTab[0].title + `\n` + deco(currTab[0].url));
 		}).catch((err) => {
 			console.log(err);
 		});
@@ -172,6 +186,8 @@ browser.pageAction.onClicked.addListener((tab, clickData) => {
 	let txt;
 	if (style == 'markdown') {
 		txt = '[' + tab.title + '](' + deco(tab.url) + ')';
+	} else if (style == 'titleUrl') {
+		txt = tab.title + `\n` + deco(tab.url);
 	} else {
 		txt = deco(tab.url);
 	}
@@ -183,12 +199,16 @@ function updateButtonTooltips() {
 	if (oPrefs.clickplain == 'url') {
 		if (oPrefs.clickshift == 'markdown') {
 			buttonTitle = 'Copy URL (Shift+click for Markdown)';
+		} else if (oPrefs.clickshift == 'titleUrl') {
+			buttonTitle = 'Copy URL (Shift+click for Title+URL)';
 		} else {
 			buttonTitle = 'Copy URL';
 		}
 	} else if (oPrefs.clickplain == 'markdown') {
 		if (oPrefs.clickshift == 'markdown') {
 			buttonTitle = 'Copy Title+URL as Markdown';
+		} else if (oPrefs.clickshift == 'titleUrl') {
+			buttonTitle = 'Copy Title+URL';
 		} else {
 			buttonTitle = 'Copy Title+URL as Markdown (Shift+click for Plain URL)';
 		}
