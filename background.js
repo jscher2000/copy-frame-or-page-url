@@ -147,18 +147,18 @@ browser.commands.onCommand.addListener((strName) => {
 
 function showPageAction(tabId){
 	browser.pageAction.show(tabId);
-	if (oPrefs.darkmode == true){
+	if (oPrefs.darkmode == true) {
 		browser.pageAction.setIcon({
 			tabId: tabId,
 			path: {
-				64: "icons/copy-frame-url-64-dark.png"
+				64: "icons/addressbar-icon-dark.png"
 			}
 		});
-	} else{
+	} else {
 		browser.pageAction.setIcon({
 			tabId: tabId,
 			path: {
-				64: "icons/copy-frame-url-64.png"
+				64: "icons/addressbar-icon.png"
 			}
 		});
 	}
