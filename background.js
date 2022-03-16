@@ -23,32 +23,32 @@ let pagemenu;
 
 // Update oPrefs from storage
 let getPrefs = browser.storage.local.get("prefs").then((results) => {
-	if (results.prefs != undefined){
-		if (JSON.stringify(results.prefs) != '{}'){
+	if (results.prefs != undefined) {
+		if (JSON.stringify(results.prefs) != '{}') {
 			var arrSavedPrefs = Object.keys(results.prefs)
-			for (var j=0; j<arrSavedPrefs.length; j++){
+			for (var j = 0; j < arrSavedPrefs.length; j++) {
 				oPrefs[arrSavedPrefs[j]] = results.prefs[arrSavedPrefs[j]];
 			}
 		}
 	}
 }).then(() => {
-	if (oPrefs.allpages == true){
+	if (oPrefs.allpages == true) {
 		pagemenu = browser.menus.create({
 			id: "copy-page-url",
 			title: "Copy Page URL",
 			contexts: ["page", "selection"],
 			icons: {
-			"64": "icons/copy-frame-url-64.png"
+				"64": "icons/copy-frame-url-64.png"
 			}
-		}, function(){ // Optimistic!
+		}, function () { // Optimistic!
 			oPrefs.allpagesmenu = true;
 		});
 	}
-	if (oPrefs.pageaction){
+	if (oPrefs.pageaction) {
 		browser.tabs.onUpdated.addListener(showPageAction);
 	}
 	updateButtonTooltips();
-}).catch((err) => {console.log('Error retrieving "prefs" from storage: '+err.message);});
+}).catch((err) => { console.log('Error retrieving "prefs" from storage: ' + err.message); });
 
 /**** Context menu item ****/
 
@@ -57,7 +57,7 @@ let framemenu = browser.menus.create({
 	title: "Copy Framed Page URL",
 	contexts: ["frame"],
 	icons: {
-	"64": "icons/copy-frame-url-64.png"
+		"64": "icons/copy-frame-url-64.png"
 	}
 });
 
@@ -70,34 +70,37 @@ browser.menus.onClicked.addListener((menuInfo, currTab) => {
 		case 'copy-page-url':
 			// Check for Shift as modifier
 			var style = oPrefs.clickplain;
-			if (menuInfo.modifiers && menuInfo.modifiers.includes('Shift')){
+			if (menuInfo.modifiers && menuInfo.modifiers.includes('Shift')) {
 				style = oPrefs.clickshift;
 			}
 			// Set up text for copying
-			if (style == 'markdown'){
-				var txt = '[' + currTab.title + '](' + deco(currTab.url) + ')';
+			let txt;
+			if (style == 'markdown') {
+				txt = '[' + currTab.title + '](' + deco(currTab.url) + ')';
+			} else if (style == 'titleUrl') {
+				txt = currTab.title + `\n` + deco(currTab.url);
 			} else {
 				txt = deco(menuInfo.pageUrl);
 			}
 			updateClipboard(txt);
 			break;
 		default:
-			// WTF?
+		// WTF?
 	}
 });
 
-function updateClipboard(txt){
+function updateClipboard(txt) {
 	// Copy to clipboard
 	navigator.clipboard.writeText(txt).catch((err) => {
 		window.alert('Apologies, but there was an error writing to the clipboard: ' + err);
 	});
 }
 
-function deco(urltxt){ // version 1.3
-	if (oPrefs.decode == true){
+function deco(urltxt) { // version 1.3
+	if (oPrefs.decode == true) {
 		try {
 			return decodeURI(urltxt);
-		} catch(err) {
+		} catch (err) {
 			console.log(err, urltxt);
 			return urltxt;
 		}
@@ -110,13 +113,16 @@ function deco(urltxt){ // version 1.3
 
 browser.browserAction.onClicked.addListener((tab, clickData) => {
 	// Check for Shift as modifier
-	var style = oPrefs.clickplain;
-	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')){
+	let style = oPrefs.clickplain;
+	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')) {
 		style = oPrefs.clickshift;
 	}
 	// Set up text for copying
-	if (style == 'markdown'){
-		var txt = '[' + tab.title + '](' + deco(tab.url) + ')';
+	let txt;
+	if (style == 'markdown') {
+		txt = '[' + tab.title + '](' + deco(tab.url) + ')';
+	} else if (style == 'titleUrl') {
+		txt = tab.title + `\n` + deco(tab.url);
 	} else {
 		txt = deco(tab.url);
 	}
@@ -124,7 +130,7 @@ browser.browserAction.onClicked.addListener((tab, clickData) => {
 });
 
 browser.commands.onCommand.addListener((strName) => {
-	if (strName === 'copy-page-url'){
+	if (strName === 'copy-page-url') {
 		browser.tabs.query({
 			active: true,
 			currentWindow: true
@@ -133,7 +139,7 @@ browser.commands.onCommand.addListener((strName) => {
 		}).catch((err) => {
 			console.log(err);
 		});
-	} else if (strName === 'copy-page-url-as-markdown'){
+	} else if (strName === 'copy-page-url-as-markdown') {
 		browser.tabs.query({
 			active: true,
 			currentWindow: true
@@ -142,26 +148,28 @@ browser.commands.onCommand.addListener((strName) => {
 		}).catch((err) => {
 			console.log(err);
 		});
+	} else if (strName === 'copy-page-url-as-title-url') {
+		browser.tabs.query({
+			active: true,
+			currentWindow: true
+		}).then((currTab) => {
+			updateClipboard(currTab[0].title + `\n` + deco(currTab[0].url));
+		}).catch((err) => {
+			console.log(err);
+		});
 	}
 });
 
-function showPageAction(tabId){
+function showPageAction(tabId) {
 	browser.pageAction.show(tabId);
-	if (oPrefs.darkmode == true){
-		browser.pageAction.setIcon({
-			tabId: tabId,
-			path: {
-				64: "icons/copy-frame-url-64-dark.png"
-			}
-		});
-	} else{
-		browser.pageAction.setIcon({
-			tabId: tabId,
-			path: {
-				64: "icons/copy-frame-url-64.png"
-			}
-		});
-	}
+
+	browser.pageAction.setIcon({
+		tabId: tabId,
+		path: {
+			64: "icons/addressbar-icon.svg"
+		}
+	});
+
 	browser.pageAction.setTitle({
 		tabId: tabId,
 		title: buttonTitle
@@ -170,13 +178,16 @@ function showPageAction(tabId){
 
 browser.pageAction.onClicked.addListener((tab, clickData) => {
 	// Check for Shift as modifier
-	var style = oPrefs.clickplain;
-	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')){
+	let style = oPrefs.clickplain;
+	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')) {
 		style = oPrefs.clickshift;
 	}
 	// Set up text for copying
-	if (style == 'markdown'){
-		var txt = '[' + tab.title + '](' + deco(tab.url) + ')';
+	let txt;
+	if (style == 'markdown') {
+		txt = '[' + tab.title + '](' + deco(tab.url) + ')';
+	} else if (style == 'titleUrl') {
+		txt = tab.title + `\n` + deco(tab.url);
 	} else {
 		txt = deco(tab.url);
 	}
@@ -184,21 +195,12 @@ browser.pageAction.onClicked.addListener((tab, clickData) => {
 });
 
 var buttonTitle = '';
-function updateButtonTooltips(){
-	if (oPrefs.clickplain == 'url'){
-		if (oPrefs.clickshift == 'markdown'){
-			buttonTitle = 'Copy Current Page URL (Shift+click for Markdown)';
-		} else {
-			buttonTitle = 'Copy Current Page URL';
-		}
-	} else if (oPrefs.clickplain == 'markdown'){
-		if (oPrefs.clickshift == 'markdown'){
-			buttonTitle = 'Copy Title+URL as Markdown';
-		} else {
-			buttonTitle = 'Copy Title+URL as Markdown (Shift+click for Plain URL)';
-		}
-	}
-	if (buttonTitle.length > 0){
+function updateButtonTooltips() {
+	buttonTitle = `${chrome.i18n.getMessage('copy')} ${chrome.i18n.getMessage(oPrefs.clickplain)}`;
+	if (oPrefs.clickplain !== oPrefs.clickshift)
+		buttonTitle += ` (${chrome.i18n.getMessage('shiftClickFor')} ${chrome.i18n.getMessage(oPrefs.clickshift)})`;
+		
+	if (buttonTitle.length > 0) {
 		browser.browserAction.setTitle({
 			title: buttonTitle
 		});
@@ -207,7 +209,7 @@ function updateButtonTooltips(){
 
 /**** Handle Requests from Options ****/
 
-function handleMessage(request, sender, sendResponse){
+function handleMessage(request, sender, sendResponse) {
 	if ("get" in request) {
 		// Send oPrefs to Options page
 		sendResponse({
@@ -221,15 +223,15 @@ function handleMessage(request, sender, sendResponse){
 		oPrefs.clickshift = oSettings.clickshift;
 		oPrefs.decode = oSettings.decode;
 		// Check for Page Action changes
-		oPrefs.darkmode = oSettings.darkmode;		
-		if (oSettings.pageaction == true && oPrefs.pageaction == false){
+		oPrefs.darkmode = oSettings.darkmode;
+		if (oSettings.pageaction == true && oPrefs.pageaction == false) {
 			browser.tabs.onUpdated.addListener(showPageAction);
-		} else if (oSettings.pageaction == false && oPrefs.pageaction == true){
+		} else if (oSettings.pageaction == false && oPrefs.pageaction == true) {
 			browser.tabs.onUpdated.removeListener(showPageAction);
 		}
 		oPrefs.pageaction = oSettings.pageaction;
-		browser.storage.local.set({prefs: oPrefs})
-			.catch((err) => {console.log('Error on browser.storage.local.set(): '+err.message);});
+		browser.storage.local.set({ prefs: oPrefs })
+			.catch((err) => { console.log('Error on browser.storage.local.set(): ' + err.message); });
 		// Add or remove menu
 		if (oPrefs.allpages == true && oPrefs.allpagesmenu == false) {
 			browser.menus.create({
@@ -239,7 +241,7 @@ function handleMessage(request, sender, sendResponse){
 				icons: {
 					"64": "icons/copy-frame-url-64.png"
 				}
-			}, function(){ // Optimistic!
+			}, function () { // Optimistic!
 				oPrefs.allpagesmenu = true;
 			});
 		} else if (oPrefs.allpages == false && oPrefs.allpagesmenu == true) {

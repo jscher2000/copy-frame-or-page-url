@@ -1,0 +1,18 @@
+{
+    "copy": {
+        "message": "Копировать",
+        "description": "Tooltip message on hover"
+    },
+    "shiftClickFor": {
+        "message": "Shift+клик –",
+        "description": "Tooltip message on hover"
+    },
+    "markdown": {
+        "message": "Разметку",
+        "description": "Tooltip message on hover"
+    },
+    "titleUrl": {
+        "message": "Заголовок+URL",
+        "description": "Tooltip message on hover"
+    }
+}

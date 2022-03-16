@@ -1,0 +1,18 @@
+{
+    "copy": {
+        "message": "Copiar",
+        "description": "Tooltip message on hover"
+    },
+    "shiftClickFor": {
+        "message": "Shift+clic para",
+        "description": "Tooltip message on hover"
+    },
+    "markdown": {
+        "message": "Marcado",
+        "description": "Tooltip message on hover"
+    },
+    "titleUrl": {
+        "message": "Título+URL",
+        "description": "Tooltip message on hover"
+    }
+}
