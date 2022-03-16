@@ -196,23 +196,10 @@ browser.pageAction.onClicked.addListener((tab, clickData) => {
 
 var buttonTitle = '';
 function updateButtonTooltips() {
-	if (oPrefs.clickplain == 'url') {
-		if (oPrefs.clickshift == 'markdown') {
-			buttonTitle = 'Copy URL (Shift+click for Markdown)';
-		} else if (oPrefs.clickshift == 'titleUrl') {
-			buttonTitle = 'Copy URL (Shift+click for Title+URL)';
-		} else {
-			buttonTitle = 'Copy URL';
-		}
-	} else if (oPrefs.clickplain == 'markdown') {
-		if (oPrefs.clickshift == 'markdown') {
-			buttonTitle = 'Copy Title+URL as Markdown';
-		} else if (oPrefs.clickshift == 'titleUrl') {
-			buttonTitle = 'Copy Title+URL';
-		} else {
-			buttonTitle = 'Copy Title+URL as Markdown (Shift+click for Plain URL)';
-		}
-	}
+	buttonTitle = `${chrome.i18n.getMessage('copy')} ${chrome.i18n.getMessage(oPrefs.clickplain)}`;
+	if (oPrefs.clickplain !== oPrefs.clickshift)
+		buttonTitle += ` (${chrome.i18n.getMessage('shiftClickFor')} ${chrome.i18n.getMessage(oPrefs.clickshift)})`;
+		
 	if (buttonTitle.length > 0) {
 		browser.browserAction.setTitle({
 			title: buttonTitle

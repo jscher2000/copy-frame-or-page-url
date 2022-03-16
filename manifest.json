@@ -3,6 +3,7 @@
 	"name": "Copy Frame or Page URL",
 	"description": "Right-click a framed page and pop its URL on the clipboard. Works on regular pages, too, unless you turn that off in Options.",
 	"version": "1.3",
+	"default_locale": "en",
 	"applications":{
 		"gecko": {
 			"id": "copy-frame-url@jeffersonscher.com",
