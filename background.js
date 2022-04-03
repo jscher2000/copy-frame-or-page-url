@@ -1,10 +1,11 @@
 /* 
-  Copyright 2021. Jefferson "jscher2000" Scher. License: MPL-2.0.
+  Copyright 2022. Jefferson "jscher2000" Scher. License: MPL-2.0.
   version 0.1 - initial concept
   version 1.0 - added toolbar button and keyboard shortcut option
   version 1.1 - added option to choose between toolbar button and address bar button
   version 1.2 - dark mode icon
   version 1.3 - option to decode unicode characters
+  version 1.4 - simplify icons, add HTML link format
 */
 
 /**** Create and populate data structure ****/
@@ -13,13 +14,17 @@
 var oPrefs = {
 	allpages: true, 		// Copy the URL of the page even if it's in the top frame
 	allpagesmenu: false,	// Current menu status
+	contexticon: false,		// Option to use context fill color for toolbar icons
+	contexticonstatus: false,	// Whether context-fill icon is in use
 	clickplain: 'url',		// Plain click on browser action copies URL only
 	clickshift: 'markdown',	// Shift+click on browser action copies markdown
+	clickctrl: 'html',		// Shift+click on browser action copies html
 	pageaction: false,		// Button in the address bar
 	darkmode: false,		// Option to use dark icon for Page Action
 	decode: true			// Option to decode Unicode URLs
 }
 let pagemenu;
+let iconpath = 'icons/link-64px-green.svg'; // default path, potentially updated later
 
 // Update oPrefs from storage
 let getPrefs = browser.storage.local.get("prefs").then((results) => {
@@ -32,14 +37,17 @@ let getPrefs = browser.storage.local.get("prefs").then((results) => {
 		}
 	}
 }).then(() => {
+	if (oPrefs.contexticon == true){
+		iconpath = 'icons/link-64px.svg';
+		oPrefs.contexticonstatus = true;
+		// Update toolbar icon (async)
+		browser.browserAction.setIcon({path: iconpath});
+	}
 	if (oPrefs.allpages == true){
 		pagemenu = browser.menus.create({
 			id: "copy-page-url",
 			title: "Copy Page URL",
-			contexts: ["page", "selection"],
-			icons: {
-			"64": "icons/copy-frame-url-64.png"
-			}
+			contexts: ["page", "selection"]
 		}, function(){ // Optimistic!
 			oPrefs.allpagesmenu = true;
 		});
@@ -55,10 +63,7 @@ let getPrefs = browser.storage.local.get("prefs").then((results) => {
 let framemenu = browser.menus.create({
 	id: "copy-frame-url",
 	title: "Copy Framed Page URL",
-	contexts: ["frame"],
-	icons: {
-	"64": "icons/copy-frame-url-64.png"
-	}
+	contexts: ["frame"]
 });
 
 browser.menus.onClicked.addListener((menuInfo, currTab) => {
@@ -68,13 +73,19 @@ browser.menus.onClicked.addListener((menuInfo, currTab) => {
 			updateClipboard(deco(menuInfo.frameUrl));
 			break;
 		case 'copy-page-url':
-			// Check for Shift as modifier
+			// Check for Shift or Ctrl as modifier
 			var style = oPrefs.clickplain;
-			if (menuInfo.modifiers && menuInfo.modifiers.includes('Shift')){
-				style = oPrefs.clickshift;
+			if (menuInfo.modifiers){
+				if (menuInfo.modifiers.includes('Shift')){
+					style = oPrefs.clickshift;
+				} else if (menuInfo.modifiers.includes('Ctrl')){
+					style = oPrefs.clickctrl;
+				}
 			}
 			// Set up text for copying
-			if (style == 'markdown'){
+			if (style == 'html'){
+				var txt = '<a href="' + deco(currTab.url) + '">' + currTab.title + '</a>';
+			} else if (style == 'markdown'){
 				var txt = '[' + currTab.title + '](' + deco(currTab.url) + ')';
 			} else {
 				txt = deco(menuInfo.pageUrl);
@@ -109,13 +120,19 @@ function deco(urltxt){ // version 1.3
 /**** Toolbar button and keyboard shortcut ****/
 
 browser.browserAction.onClicked.addListener((tab, clickData) => {
-	// Check for Shift as modifier
+	// Check for Shift or Ctrl as modifier
 	var style = oPrefs.clickplain;
-	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')){
-		style = oPrefs.clickshift;
+	if (clickData && clickData.modifiers){
+		if (clickData.modifiers.includes('Shift')){
+			style = oPrefs.clickshift;
+		} else if (clickData.modifiers.includes('Ctrl')){
+			style = oPrefs.clickctrl;
+		}
 	}
 	// Set up text for copying
-	if (style == 'markdown'){
+	if (style == 'html'){
+		var txt = '<a href="' + deco(tab.url) + '">' + tab.title + '</a>';
+	} else if (style == 'markdown'){
 		var txt = '[' + tab.title + '](' + deco(tab.url) + ')';
 	} else {
 		txt = deco(tab.url);
@@ -142,23 +159,32 @@ browser.commands.onCommand.addListener((strName) => {
 		}).catch((err) => {
 			console.log(err);
 		});
+	} else if (strName === 'copy-page-url-as-html'){ //todo
+		browser.tabs.query({
+			active: true,
+			currentWindow: true
+		}).then((currTab) => {
+			updateClipboard('<a href="' + deco(currTab.url) + '">' + currTab.title + '</a>');
+		}).catch((err) => {
+			console.log(err);
+		});
 	}
 });
 
 function showPageAction(tabId){
 	browser.pageAction.show(tabId);
-	if (oPrefs.darkmode == true){
+	if (oPrefs.darkmode == true){ // as of v1.4, same icon
 		browser.pageAction.setIcon({
 			tabId: tabId,
 			path: {
-				64: "icons/copy-frame-url-64-dark.png"
+				64: iconpath
 			}
 		});
-	} else{
+	} else {
 		browser.pageAction.setIcon({
 			tabId: tabId,
 			path: {
-				64: "icons/copy-frame-url-64.png"
+				64: iconpath
 			}
 		});
 	}
@@ -169,13 +195,19 @@ function showPageAction(tabId){
 }
 
 browser.pageAction.onClicked.addListener((tab, clickData) => {
-	// Check for Shift as modifier
+	// Check for Shift or Ctrl as modifier
 	var style = oPrefs.clickplain;
-	if (clickData && clickData.modifiers && clickData.modifiers.includes('Shift')){
-		style = oPrefs.clickshift;
+	if (clickData && clickData.modifiers){
+		if (clickData.modifiers.includes('Shift')){
+			style = oPrefs.clickshift;
+		} else if (clickData.modifiers.includes('Ctrl')){
+			style = oPrefs.clickctrl;
+		}
 	}
 	// Set up text for copying
-	if (style == 'markdown'){
+	if (style == 'html'){
+		var txt = '<a href="' + deco(tab.url) + '">' + tab.title + '</a>';
+	} else if (style == 'markdown'){
 		var txt = '[' + tab.title + '](' + deco(tab.url) + ')';
 	} else {
 		txt = deco(tab.url);
@@ -186,17 +218,13 @@ browser.pageAction.onClicked.addListener((tab, clickData) => {
 var buttonTitle = '';
 function updateButtonTooltips(){
 	if (oPrefs.clickplain == 'url'){
-		if (oPrefs.clickshift == 'markdown'){
-			buttonTitle = 'Copy Current Page URL (Shift+click for Markdown)';
-		} else {
-			buttonTitle = 'Copy Current Page URL';
-		}
-	} else if (oPrefs.clickplain == 'markdown'){
-		if (oPrefs.clickshift == 'markdown'){
-			buttonTitle = 'Copy Title+URL as Markdown';
-		} else {
-			buttonTitle = 'Copy Title+URL as Markdown (Shift+click for Plain URL)';
-		}
+		buttonTitle = 'Copy Current Page URL (Shift => ' + oPrefs.clickshift + ', Ctrl => ' + oPrefs.clickctrl + ')';
+	}
+	if (oPrefs.clickplain == 'markdown'){
+		buttonTitle = 'Copy Title+URL as Markdown (Shift => ' + oPrefs.clickshift + ', Ctrl => ' + oPrefs.clickctrl + ')';
+	}
+	if (oPrefs.clickplain == 'html'){
+		buttonTitle = 'Copy Title+URL as HTML Link (Shift => ' + oPrefs.clickshift + ', Ctrl => ' + oPrefs.clickctrl + ')';
 	}
 	if (buttonTitle.length > 0){
 		browser.browserAction.setTitle({
@@ -217,11 +245,27 @@ function handleMessage(request, sender, sendResponse){
 		// Receive pref updates from Options page, store to oPrefs, and commit to storage
 		var oSettings = request["update"];
 		oPrefs.allpages = oSettings.allpages;
+		// Icon change
+		oPrefs.contexticon = oSettings.contexticon;
+		if (oPrefs.contexticon == true && oPrefs.contexticonstatus == false) {
+			iconpath = 'icons/link-64px.svg';
+			oPrefs.contexticonstatus = true;
+			// Update toolbar icon (async)
+			browser.browserAction.setIcon({path: iconpath});
+			// Update menu icon (NOT POSSIBLE FOR TOP LEVEL ITEMS)
+		} else if (oPrefs.contexticon == false && oPrefs.contexticonstatus == true) {
+			iconpath = 'icons/link-64px-green.svg';
+			oPrefs.contexticonstatus = false;
+			// Update toolbar icon (async)
+			browser.browserAction.setIcon({path: iconpath});
+			// Update menu icon (NOT POSSIBLE FOR TOP LEVEL ITEMS)
+		}
 		oPrefs.clickplain = oSettings.clickplain;
 		oPrefs.clickshift = oSettings.clickshift;
+		oPrefs.clickctrl = oSettings.clickctrl;
 		oPrefs.decode = oSettings.decode;
 		// Check for Page Action changes
-		oPrefs.darkmode = oSettings.darkmode;		
+		oPrefs.darkmode = oSettings.darkmode;
 		if (oSettings.pageaction == true && oPrefs.pageaction == false){
 			browser.tabs.onUpdated.addListener(showPageAction);
 		} else if (oSettings.pageaction == false && oPrefs.pageaction == true){
@@ -235,10 +279,7 @@ function handleMessage(request, sender, sendResponse){
 			browser.menus.create({
 				id: "copy-page-url",
 				title: "Copy Page URL",
-				contexts: ["page", "selection"],
-				icons: {
-					"64": "icons/copy-frame-url-64.png"
-				}
+				contexts: ["page", "selection"]
 			}, function(){ // Optimistic!
 				oPrefs.allpagesmenu = true;
 			});
